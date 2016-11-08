@@ -33,7 +33,7 @@ class Environment(object):
 
     def __init__(self, num_dummies=3):
         self.num_dummies = num_dummies  # no. of dummy agents
-        
+
         # Initialize simulation variables
         self.done = False
         self.t = 0
@@ -144,7 +144,7 @@ class Environment(object):
         right = None
         for other_agent, other_state in self.agent_states.iteritems():
             if agent == other_agent or location != other_state['location'] or (heading[0] == other_state['heading'][0] and heading[1] == other_state['heading'][1]):
-                continue
+                continue # pass if 1) same agent; 2) not in same intersection; 3) saming heading orientation
             other_heading = other_agent.get_next_waypoint()
             if (heading[0] * other_state['heading'][0] + heading[1] * other_state['heading'][1]) == -1:
                 if oncoming != 'left':  # we don't want to override oncoming == 'left'
