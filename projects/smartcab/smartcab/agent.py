@@ -10,7 +10,7 @@ class LearningAgent(Agent):
     """ An agent that learns to drive in the Smartcab world.
         This is the object you will be modifying. """
 
-    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5):
+    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5, decay=0.2):
         super(LearningAgent, self).__init__(env)     # Set the agent in the evironment
         self.planner = RoutePlanner(self.env, self)  # Create a route planner
         self.valid_actions = self.env.valid_actions  # The set of valid actions
@@ -25,8 +25,8 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set any additional class parameters as needed
-        grid_size = self.env.grid_size # grid size
-        self.max_deadline = (grid_size[0] + grid_size[1]) * 5.0 # maximum possible deadline (original count down value)
+        self.decay = decay # decay param a for epsilon: e^(-a*t)
+        self.num_trials = 0
 
     def reset(self, destination=None, testing=False):
         """ The reset function is called at the beginning of each trial.
@@ -46,8 +46,9 @@ class LearningAgent(Agent):
             self.alpha = 0.0
             self.epsilon = 0.0
         else:
-            self.epsilon -= 0.05
-            self.epsilon = max(0.0, self.epsilon)
+            self.epsilon = math.e ** (-self.decay * self.num_trials)
+            self.alpha = 0.9 * math.e ** (-0.05 * self.num_trials)
+        self.num_trials += 1
         return None
 
     def build_state(self):
@@ -84,14 +85,9 @@ class LearningAgent(Agent):
             else:
                 state = 'Green_Others'
 
+        state = "_".join([state, waypoint])
 
-        # Second dimension: deadline
-        if deadline > .999 * self.max_deadline:
-            dl_mark = 2
-        else:
-            dl_mark = 1
-
-        state = "_".join([state, waypoint, str(dl_mark)])
+        # state = (inputs['light'], inputs['oncoming'], inputs['left'], inputs['right'], waypoint)
 
         return state
 
@@ -183,7 +179,7 @@ def run():
     #   verbose     - set to True to display additional output from the simulation
     #   num_dummies - discrete number of dummy agents in the environment, default is 100
     #   grid_size   - discrete number of intersections (columns, rows), default is (8, 6)
-    env = Environment()
+    env = Environment(verbose=True)
 
     ##############
     # Create the driving agent
@@ -206,7 +202,8 @@ def run():
     #   display      - set to False to disable the GUI if PyGame is enabled
     #   log_metrics  - set to True to log trial and simulation results to /logs
     #   optimized    - set to True to change the default log file name
-    sim = Simulator(env, update_delay=0.01, display=False, log_metrics=True)
+    sim = Simulator(env, update_delay=0.01, display=False, log_metrics=True,\
+                    optimized=True)
 
     ##############
     # Run the simulator
