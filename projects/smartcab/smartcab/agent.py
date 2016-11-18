@@ -9,8 +9,7 @@ from simulator import Simulator
 class LearningAgent(Agent):
     """ An agent that learns to drive in the Smartcab world.
         This is the object you will be modifying. """
-
-    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5, decay=0.2):
+    def __init__(self, env, learning=False, epsilon=1.0, alpha=1.0, decay=0.15, gamma=0.2):
         super(LearningAgent, self).__init__(env)     # Set the agent in the evironment
         self.planner = RoutePlanner(self.env, self)  # Create a route planner
         self.valid_actions = self.env.valid_actions  # The set of valid actions
@@ -27,6 +26,7 @@ class LearningAgent(Agent):
         # Set any additional class parameters as needed
         self.decay = decay # decay param a for epsilon: e^(-a*t)
         self.num_trials = 0
+        self.gamma = gamma
 
     def reset(self, destination=None, testing=False):
         """ The reset function is called at the beginning of each trial.
@@ -47,7 +47,7 @@ class LearningAgent(Agent):
             self.epsilon = 0.0
         else:
             self.epsilon = math.e ** (-self.decay * self.num_trials)
-            self.alpha = 0.9 * math.e ** (-0.05 * self.num_trials)
+            self.alpha = math.e ** (-0.05 * self.num_trials)
         self.num_trials += 1
         return None
 
@@ -133,7 +133,11 @@ class LearningAgent(Agent):
         # When not learning, choose a random action
         # When learning, choose a random action with 'epsilon' probability
         #   Otherwise, choose an action with the highest Q-value for the current state
-        action = max(self.Q[state], key=lambda k: self.Q[state][k])
+        rnd = random.uniform(0, 1)
+        if self.epsilon >= rnd:
+            action = random.choice(self.env.valid_actions[1:])
+        else:
+            action = max(self.Q[state], key=lambda k: self.Q[state][k])
         return action
 
 
@@ -149,9 +153,8 @@ class LearningAgent(Agent):
         #   Use only the learning rate 'alpha' (do not use the discount factor 'gamma')
         next_state = self.build_state() # state after action
         self.createQ(next_state)
-        maxQ = self.get_maxQ(next_state)
-        self.Q[state][action] = (1-self.alpha)*self.Q[state][action] + \
-            self.alpha*(reward + maxQ)
+        self.Q[state][action] = (1.0-self.alpha)*self.Q[state][action] + \
+            self.alpha*(reward + self.gamma*self.get_maxQ(next_state))
         return
 
 
@@ -210,7 +213,7 @@ def run():
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run(n_test=10)
+    sim.run(n_test=10, tolerance=0.02)
 
 
 if __name__ == '__main__':
