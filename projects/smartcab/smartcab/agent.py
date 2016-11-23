@@ -9,7 +9,8 @@ from simulator import Simulator
 class LearningAgent(Agent):
     """ An agent that learns to drive in the Smartcab world.
         This is the object you will be modifying. """
-    def __init__(self, env, learning=False, epsilon=1.0, alpha=1.0, decay=0.15, gamma=0.2):
+    def __init__(self, env, learning=False, epsilon=1.0, alpha=0.5, \
+                 optimized=False, decay=[0.025, 0.075], gamma=0):
         super(LearningAgent, self).__init__(env)     # Set the agent in the evironment
         self.planner = RoutePlanner(self.env, self)  # Create a route planner
         self.valid_actions = self.env.valid_actions  # The set of valid actions
@@ -24,9 +25,11 @@ class LearningAgent(Agent):
         ## TO DO ##
         ###########
         # Set any additional class parameters as needed
-        self.decay = decay # decay param a for epsilon: e^(-a*t)
+        self.optimized = optimized # decay only when optimized=True
+        self.a_decay = decay[0] # decay param for alpha: e^(-b*t)
+        self.e_decay = decay[1] # decay param for epsilon: e^(-a*t)
         self.num_trials = 0
-        self.gamma = gamma
+        self.gamma = gamma # initialized to 0 to ignore future reward
 
     def reset(self, destination=None, testing=False):
         """ The reset function is called at the beginning of each trial.
@@ -46,8 +49,11 @@ class LearningAgent(Agent):
             self.alpha = 0.0
             self.epsilon = 0.0
         else:
-            self.epsilon = math.e ** (-self.decay * self.num_trials)
-            self.alpha = math.e ** (-0.05 * self.num_trials)
+            if self.optimized:
+                self.alpha = 0.9*math.e ** (-self.a_decay * self.num_trials)
+                self.epsilon = math.e ** (-self.e_decay * self.num_trials)
+            else:
+                self.epsilon -= 0.05
         self.num_trials += 1
         return None
 
@@ -135,7 +141,7 @@ class LearningAgent(Agent):
         #   Otherwise, choose an action with the highest Q-value for the current state
         rnd = random.uniform(0, 1)
         if self.epsilon >= rnd:
-            action = random.choice(self.env.valid_actions[1:])
+            action = random.choice(self.env.valid_actions[1:]) # explore!
         else:
             action = max(self.Q[state], key=lambda k: self.Q[state][k])
         return action
@@ -190,7 +196,7 @@ def run():
     #   learning   - set to True to force the driving agent to use Q-learning
     #    * epsilon - continuous value for the exploration factor, default is 1
     #    * alpha   - continuous value for the learning rate, default is 0.5
-    agent = env.create_agent(LearningAgent, learning=True)
+    agent = env.create_agent(LearningAgent, learning=True, optimized=True)
 
     ##############
     # Follow the driving agent
@@ -213,7 +219,7 @@ def run():
     # Flags:
     #   tolerance  - epsilon tolerance before beginning testing, default is 0.05
     #   n_test     - discrete number of testing trials to perform, default is 0
-    sim.run(n_test=10, tolerance=0.02)
+    sim.run(n_test=10, tolerance=0.1)
 
 
 if __name__ == '__main__':
