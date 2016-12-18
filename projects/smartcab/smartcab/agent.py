@@ -120,8 +120,9 @@ class LearningAgent(Agent):
         # When learning, check if the 'state' is not in the Q-table
         # If it is not, create a new dictionary for that state
         #   Then, for each action available, set the initial Q-value to 0.0
-        if state not in self.Q.keys():
-            self.Q[state] = {'forward': 0.0, 'right': 0.0, 'left': 0.0, None: 0.0}
+        if self.learning:
+            if state not in self.Q.keys():
+                self.Q[state] = {'forward': 0.0, 'right': 0.0, 'left': 0.0, None: 0.0}
         return
 
 
@@ -139,11 +140,20 @@ class LearningAgent(Agent):
         # When not learning, choose a random action
         # When learning, choose a random action with 'epsilon' probability
         #   Otherwise, choose an action with the highest Q-value for the current state
-        rnd = random.uniform(0, 1)
-        if self.epsilon >= rnd:
-            action = random.choice(self.env.valid_actions[1:]) # explore!
+        if self.learning:
+            rnd = random.uniform(0, 1)
+            if self.epsilon >= rnd:
+                action = random.choice(self.env.valid_actions[1:]) # explore!
+            else:
+                actions = []
+                Q_values = []
+                for k, v in self.Q[state].iteritems():
+                    actions.append(k)
+                    Q_values.append(v)
+                idx = np.argwhere(Q_values==np.max(Q_values)).reshape(-1)
+                action = random.choice(np.array(actions)[idx]) # randomly choose one action if multiple max
         else:
-            action = max(self.Q[state], key=lambda k: self.Q[state][k])
+            action = random.choice(self.env.valid_actions)
         return action
 
 
@@ -157,10 +167,11 @@ class LearningAgent(Agent):
         ###########
         # When learning, implement the value iteration update rule
         #   Use only the learning rate 'alpha' (do not use the discount factor 'gamma')
-        next_state = self.build_state() # state after action
-        self.createQ(next_state)
-        self.Q[state][action] = (1.0-self.alpha)*self.Q[state][action] + \
-            self.alpha*(reward + self.gamma*self.get_maxQ(next_state))
+        if self.learning:
+            next_state = self.build_state() # state after action
+            self.createQ(next_state)
+            self.Q[state][action] = (1.0-self.alpha)*self.Q[state][action] + \
+                self.alpha*(reward + self.gamma*self.get_maxQ(next_state))
         return
 
 
